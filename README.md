@@ -14,5 +14,5 @@ go build main.go
 ```
 There is one flag, the number N of queens on a NxN chess board. The default is 4. Example:
 ```bash
-./main.go -n 8
+./main.go -N 8
 ```
