@@ -13,6 +13,7 @@ const (
 	width  = 500 // width of the game board
 	height = 500 // height of the game board
 
+	// source code for the vertex shader
 	vertexShaderSource = `
     #version 410
 	layout(location = 0) in vec3 vp;
@@ -24,6 +25,7 @@ const (
     }
 ` + "\x00"
 
+	// source code for the fragment shader
 	fragmentShaderSource = `
 	#version 410
 	precision highp float;
@@ -35,35 +37,48 @@ const (
 ` + "\x00"
 )
 
+// struct that represents a cell
 type cell struct {
+	// drawable openGL VAO
 	drawable uint32
 
+	// whether this cell has a queen on it or not
 	hasQueen bool
 
+	// coordinates
 	x int
 	y int
 }
 
+// draws the cell
 func (c *cell) draw() {
 	gl.BindVertexArray(c.drawable)
 	gl.DrawArrays(gl.TRIANGLES, 0, int32(len(square)/3))
 }
 
+// function that makes the cells of the board
 func makeCells() [][]*cell {
 	cells := make([][]*cell, *N, *N)
+	// first cell in the bottom left corner is black
 	isWhite := false
 	for x := 0; x < *N; x++ {
 		for y := 0; y < *N; y++ {
+			// make a new cell
 			c := newCell(x, y, isWhite)
 			cells[x] = append(cells[x], c)
+			// next cell is white
 			isWhite = !isWhite
 		}
-		isWhite = !isWhite
+		// only switch the color again if the board has an even N
+		if *N%2 == 0 {
+			isWhite = !isWhite
+		}
 	}
 	return cells
 }
 
 func newCell(x, y int, isWhite bool) *cell {
+	// copy the square in a new array such that we can modify the points
 	points := make([]float32, len(square), len(square))
 	copy(points, square)
 
@@ -71,9 +86,11 @@ func newCell(x, y int, isWhite bool) *cell {
 		var position float32
 		var size float32
 		switch i % 3 {
+		// if x coordinate
 		case 0:
 			size = 1.0 / float32(*N)
 			position = float32(x) * size
+		// if y coordinate
 		case 1:
 			size = 1.0 / float32(*N)
 			position = float32(y) * size
@@ -87,6 +104,7 @@ func newCell(x, y int, isWhite bool) *cell {
 			points[i] = ((position + size) * 2) - 1
 		}
 	}
+	// if the cell is white, use the white color buffer
 	if isWhite {
 		return &cell{
 			// TODO: replace squareColor with new colors
@@ -95,6 +113,7 @@ func newCell(x, y int, isWhite bool) *cell {
 			y:        y,
 		}
 	}
+	// else use the black color buffer
 	return &cell{
 		// TODO: replace squareColor with new colors
 		drawable: makeVao(points, squareColorBlack),
@@ -104,17 +123,20 @@ func newCell(x, y int, isWhite bool) *cell {
 }
 
 func draw(cells [][]*cell, window *glfw.Window, program uint32) {
+	// clear everything
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 	// grey background RGB(0.25, 0.25, 0.25)
 	gl.ClearColor(0.25, 0.25, 0.25, 1)
 	gl.UseProgram(program)
 
+	// draw each cell
 	for x := range cells {
 		for _, c := range cells[x] {
 			c.draw()
 		}
 	}
 
+	// poll events and swap the buffers
 	glfw.PollEvents()
 	window.SwapBuffers()
 }
@@ -125,6 +147,7 @@ func initGlfw() *glfw.Window {
 		panic(err)
 	}
 
+	// window settings
 	glfw.WindowHint(glfw.Resizable, glfw.False)
 	glfw.WindowHint(glfw.ContextVersionMajor, 4)
 	glfw.WindowHint(glfw.ContextVersionMinor, 1)
@@ -148,15 +171,19 @@ func initOpenGL() uint32 {
 	version := gl.GoStr(gl.GetString(gl.VERSION))
 	log.Println("OpenGL version", version)
 
+	// compile the vertex shader
 	vertexShader, err := compileShader(vertexShaderSource, gl.VERTEX_SHADER)
 	if err != nil {
 		panic(err)
 	}
+
+	// compile the fragment shader
 	fragmentShader, err := compileShader(fragmentShaderSource, gl.FRAGMENT_SHADER)
 	if err != nil {
 		panic(err)
 	}
 
+	// create the program and attach the shaders
 	prog := gl.CreateProgram()
 	gl.AttachShader(prog, vertexShader)
 	gl.AttachShader(prog, fragmentShader)
@@ -164,25 +191,31 @@ func initOpenGL() uint32 {
 	return prog
 }
 
+// function that makes a VAO based on an array of points and an array of colors
 func makeVao(points []float32, colors []float32) uint32 {
+	// buffer for the vertices
 	var vertexBuffer uint32
 	gl.GenBuffers(1, &vertexBuffer)
 	gl.BindBuffer(gl.ARRAY_BUFFER, vertexBuffer)
 	gl.BufferData(gl.ARRAY_BUFFER, 4*len(points), gl.Ptr(points), gl.STATIC_DRAW)
 
+	// buffer for the colors
 	var colorBuffer uint32
 	gl.GenBuffers(1, &colorBuffer)
 	gl.BindBuffer(gl.ARRAY_BUFFER, colorBuffer)
 	gl.BufferData(gl.ARRAY_BUFFER, 4*len(colors), gl.Ptr(colors), gl.STATIC_DRAW)
 
+	// initialize the VAO
 	var vao uint32
 	gl.GenVertexArrays(1, &vao)
 	gl.BindVertexArray(vao)
 
+	// bind the vertex buffer
 	gl.EnableVertexAttribArray(0)
 	gl.BindBuffer(gl.ARRAY_BUFFER, vertexBuffer)
 	gl.VertexAttribPointer(0, 3, gl.FLOAT, false, 0, nil)
 
+	// bind the color buffer
 	gl.EnableVertexAttribArray(1)
 	gl.BindBuffer(gl.ARRAY_BUFFER, colorBuffer)
 	gl.VertexAttribPointer(1, 3, gl.FLOAT, false, 0, nil)
@@ -190,6 +223,7 @@ func makeVao(points []float32, colors []float32) uint32 {
 	return vao
 }
 
+// function that compiles the source code of a shader based on the given shader type
 func compileShader(source string, shaderType uint32) (uint32, error) {
 	shader := gl.CreateShader(shaderType)
 

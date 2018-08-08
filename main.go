@@ -16,15 +16,18 @@ func main() {
 	// parse the flags
 	flag.Parse()
 
+	// initiate glfw and defer termination
 	window := initGlfw()
 	defer glfw.Terminate()
 
+	// initiate openGL
 	program := initOpenGL()
 
+	// initiate the cells of the board
 	cells := makeCells()
 
 	for !window.ShouldClose() {
-		// TODO
+		// draw the cells
 		draw(cells, window, program)
 	}
 }
