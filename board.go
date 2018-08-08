@@ -15,18 +15,22 @@ const (
 
 	vertexShaderSource = `
     #version 410
-    in vec3 vp;
+	layout(location = 0) in vec3 vp;
+	layout(location = 1) in vec3 vc;
+	out vec3 fragmentColor;
     void main() {
-        gl_Position = vec4(vp.x, vp.y, vp.z, 1.0);
+		gl_Position = vec4(vp, 1.0);
+		fragmentColor = vc;
     }
 ` + "\x00"
 
 	fragmentShaderSource = `
 	#version 410
 	precision highp float;
-    out vec4 frag_colour;
+	in vec3 fragmentColor;
+    out vec3 frag_colour;
     void main() {
-        frag_colour = vec4(1, 1, 1, 1);
+        frag_colour = fragmentColor;
     }
 ` + "\x00"
 )
@@ -40,6 +44,15 @@ var (
 		-0.5, 0.5, 0,
 		0.5, 0.5, 0,
 		0.5, -0.5, 0,
+	}
+	squareColor = []float32{
+		1.0, 0, 0,
+		1.0, 0, 0,
+		1.0, 0, 0,
+
+		0, 1.0, 0,
+		0, 1.0, 0,
+		0, 1.0, 0,
 	}
 )
 
@@ -100,7 +113,8 @@ func newCell(x, y int, isWhite bool) *cell {
 	}
 
 	return &cell{
-		drawable: makeVao(points),
+		// TODO: replace squareColor with new colors
+		drawable: makeVao(points, squareColor),
 		isWhite:  isWhite,
 		x:        x,
 		y:        y,
@@ -109,6 +123,8 @@ func newCell(x, y int, isWhite bool) *cell {
 
 func draw(cells [][]*cell, window *glfw.Window, program uint32) {
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+	// grey background RGB(0.25, 0.25, 0.25)
+	gl.ClearColor(0.25, 0.25, 0.25, 1)
 	gl.UseProgram(program)
 
 	for x := range cells {
@@ -166,18 +182,28 @@ func initOpenGL() uint32 {
 	return prog
 }
 
-func makeVao(points []float32) uint32 {
-	var vbo uint32
-	gl.GenBuffers(1, &vbo)
-	gl.BindBuffer(gl.ARRAY_BUFFER, vbo)
+func makeVao(points []float32, colors []float32) uint32 {
+	var vertexBuffer uint32
+	gl.GenBuffers(1, &vertexBuffer)
+	gl.BindBuffer(gl.ARRAY_BUFFER, vertexBuffer)
 	gl.BufferData(gl.ARRAY_BUFFER, 4*len(points), gl.Ptr(points), gl.STATIC_DRAW)
+
+	var colorBuffer uint32
+	gl.GenBuffers(1, &colorBuffer)
+	gl.BindBuffer(gl.ARRAY_BUFFER, colorBuffer)
+	gl.BufferData(gl.ARRAY_BUFFER, 4*len(colors), gl.Ptr(colors), gl.STATIC_DRAW)
 
 	var vao uint32
 	gl.GenVertexArrays(1, &vao)
 	gl.BindVertexArray(vao)
+
 	gl.EnableVertexAttribArray(0)
-	gl.BindBuffer(gl.ARRAY_BUFFER, vbo)
+	gl.BindBuffer(gl.ARRAY_BUFFER, vertexBuffer)
 	gl.VertexAttribPointer(0, 3, gl.FLOAT, false, 0, nil)
+
+	gl.EnableVertexAttribArray(1)
+	gl.BindBuffer(gl.ARRAY_BUFFER, colorBuffer)
+	gl.VertexAttribPointer(1, 3, gl.FLOAT, false, 0, nil)
 
 	return vao
 }
