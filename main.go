@@ -13,14 +13,18 @@ var N = flag.Int("N", 4, "the number of queens and the size of the board")
 
 func main() {
 	runtime.LockOSThread()
+	// parse the flags
+	flag.Parse()
 
 	window := initGlfw()
 	defer glfw.Terminate()
 
 	program := initOpenGL()
 
+	cells := makeCells()
+
 	for !window.ShouldClose() {
 		// TODO
-		draw(window, program)
+		draw(cells, window, program)
 	}
 }
