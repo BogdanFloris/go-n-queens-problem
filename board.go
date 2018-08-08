@@ -35,40 +35,16 @@ const (
 ` + "\x00"
 )
 
-var (
-	square = []float32{
-		-0.5, 0.5, 0,
-		-0.5, -0.5, 0,
-		0.5, -0.5, 0,
-
-		-0.5, 0.5, 0,
-		0.5, 0.5, 0,
-		0.5, -0.5, 0,
-	}
-	squareColor = []float32{
-		1.0, 0, 0,
-		1.0, 0, 0,
-		1.0, 0, 0,
-
-		0, 1.0, 0,
-		0, 1.0, 0,
-		0, 1.0, 0,
-	}
-)
-
 type cell struct {
 	drawable uint32
 
-	isWhite bool
+	hasQueen bool
 
 	x int
 	y int
 }
 
 func (c *cell) draw() {
-	if !c.isWhite {
-		return
-	}
 	gl.BindVertexArray(c.drawable)
 	gl.DrawArrays(gl.TRIANGLES, 0, int32(len(square)/3))
 }
@@ -111,11 +87,17 @@ func newCell(x, y int, isWhite bool) *cell {
 			points[i] = ((position + size) * 2) - 1
 		}
 	}
-
+	if isWhite {
+		return &cell{
+			// TODO: replace squareColor with new colors
+			drawable: makeVao(points, squareColorWhite),
+			x:        x,
+			y:        y,
+		}
+	}
 	return &cell{
 		// TODO: replace squareColor with new colors
-		drawable: makeVao(points, squareColor),
-		isWhite:  isWhite,
+		drawable: makeVao(points, squareColorBlack),
 		x:        x,
 		y:        y,
 	}
